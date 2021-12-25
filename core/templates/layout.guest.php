@@ -1,37 +1,59 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<title>ownCloud</title>
-		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-		<link rel="shortcut icon" href="<?php echo image_path('', 'favicon.png'); ?>" /><link rel="apple-touch-icon-precomposed" href="<?php echo image_path('', 'favicon-touch.png'); ?>" />
-		<?php foreach($_['cssfiles'] as $cssfile): ?>
-			<link rel="stylesheet" href="<?php echo $cssfile; ?>" type="text/css" media="screen" />
-		<?php endforeach; ?>
-		<script type="text/javascript">
-			var oc_webroot = '<?php global $WEBROOT; echo $WEBROOT; ?>';
-		</script>
-		<?php foreach($_['jsfiles'] as $jsfile): ?>
-			<script type="text/javascript" src="<?php echo $jsfile; ?>"></script>
-		<?php endforeach; ?>
-	
-		<?php foreach($_['headers'] as $header): ?>
-			<?php
-				echo '<'.$header['tag'].' ';
-				foreach($header['attributes'] as $name=>$value){
-					echo "$name='$value' ";
-				};
-				echo '/>';
-			?>
-		<?php endforeach; ?>
+<html class="ng-csp" data-placeholder-focus="false" lang="<?php p($_['language']); ?>" data-locale="<?php p($_['locale']); ?>" >
+	<head
+<?php if ($_['user_uid']) { ?>
+	data-user="<?php p($_['user_uid']); ?>" data-user-displayname="<?php p($_['user_displayname']); ?>"
+<?php } ?>
+ data-requesttoken="<?php p($_['requesttoken']); ?>">
+		<meta charset="utf-8">
+		<title>
+		<?php p($theme->getTitle()); ?>
+		</title>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+		<?php if ($theme->getiTunesAppId() !== '') { ?>
+		<meta name="apple-itunes-app" content="app-id=<?php p($theme->getiTunesAppId()); ?>">
+		<?php } ?>
+		<meta name="theme-color" content="<?php p($theme->getColorPrimary()); ?>">
+		<link rel="icon" href="<?php print_unescaped(image_path('', 'favicon.ico')); /* IE11+ supports png */ ?>">
+		<link rel="apple-touch-icon" href="<?php print_unescaped(image_path('', 'favicon-touch.png')); ?>">
+		<link rel="mask-icon" sizes="any" href="<?php print_unescaped(image_path('', 'favicon-mask.svg')); ?>" color="<?php p($theme->getColorPrimary()); ?>">
+		<link rel="manifest" href="<?php print_unescaped(image_path('', 'manifest.json')); ?>">
+		<?php emit_css_loading_tags($_); ?>
+		<?php emit_script_loading_tags($_); ?>
+		<?php print_unescaped($_['headers']); ?>
 	</head>
-
-	<body id="body-login">
-		<div id="login">
-			<header><div id="header">
-				<img src="<?php echo image_path('', 'owncloud-logo-medium-white.png'); ?>" alt="ownCloud" />
-			</div></header>
-			<?php echo $_['content']; ?>
+	<body id="<?php p($_['bodyid']);?>">
+		<?php include 'layout.noscript.warning.php'; ?>
+		<?php foreach ($_['initialStates'] as $app => $initialState) { ?>
+			<input type="hidden" id="initial-state-<?php p($app); ?>" value="<?php p(base64_encode($initialState)); ?>">
+		<?php }?>
+		<div class="wrapper">
+			<div class="v-align">
+				<?php if ($_['bodyid'] === 'body-login'): ?>
+					<header role="banner">
+						<div id="header">
+							<div class="logo">
+								<h1 class="hidden-visually">
+									<?php p($theme->getName()); ?>
+								</h1>
+								<?php if (\OC::$server->getConfig()->getSystemValue('installed', false)
+									&& \OC::$server->getConfig()->getAppValue('theming', 'logoMime', false)): ?>
+									<img src="<?php p($theme->getLogo()); ?>"/>
+								<?php endif; ?>
+							</div>
+						</div>
+					</header>
+				<?php endif; ?>
+				<main>
+					<?php print_unescaped($_['content']); ?>
+				</main>
+			</div>
 		</div>
-		<footer><p class="info"><a href="http://owncloud.org/">ownCloud</a> <?php echo $l->t( 'gives you the freedom to control your own data on the internet' ); ?></p></footer>
+		<footer role="contentinfo">
+			<p class="info">
+				<?php print_unescaped($theme->getLongFooter()); ?>
+			</p>
+		</footer>
 	</body>
 </html>

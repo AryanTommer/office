@@ -1,30 +1,33 @@
-<fieldset>
-	<legend>Your Shared Files</legend>
-	<table id="itemlist">
-		<thead>
-			<tr>
-				<th>Item</th>
-				<th>Shared With</th>
-				<th>Permissions</th>
-			</tr>
-		</thead>
-		<tbody>
-			<?php foreach($_['shared_items'] as $item):?>
-				<tr class="item">
-					<td class="source"><?php echo substr($item['source'], strlen("/".$_SESSION['user_id']."/files/"));?></td>
-					<td class="uid_shared_with"><?php echo $item['uid_shared_with'];?></td>
-					<td class="permissions"><?php echo "Read"; echo($item['permissions'] & OC_SHARE::WRITE ? ", Edit" : ""); echo($item['permissions'] & OC_SHARE::DELETE ? ", Delete" : "");?></td>
-					<td><button class="delete" data-source="<?php echo $item['source'];?>" data-uid_shared_with="<?php echo $item['uid_shared_with'];?>">Delete</button></td>
-				</tr>
-			<?php endforeach;?>
-			<tr id="share_item_row">
-				<form action="#" id="share_item">
-					<td class="source"><input placeholder="Item" id="source" /></td>
-					<td class="uid_shared_with"><input placeholder="Share With" id="uid_shared_with" /></td>
-					<td class="permissions"><input placeholder="Permissions" id="permissions" /></td>
-					<td><input type="submit" value="Share" /></td>
-				</form>
-			</tr>
-		</tbody>
-	</table>
-</fieldset>
+<?php /** @var \OCP\IL10N $l */ ?>
+<div id='notification'></div>
+
+<div id="emptycontent" class="hidden"></div>
+
+<input type="hidden" name="dir" value="" id="dir">
+
+<div class="nofilterresults emptycontent hidden">
+	<div class="icon-search"></div>
+	<h2><?php p($l->t('No entries found in this folder')); ?></h2>
+</div>
+
+<table id="filestable" class="list-container <?php p($_['showgridview'] ? 'view-grid' : '') ?>">
+	<thead>
+		<tr>
+			<th id='headerName' class="hidden column-name">
+				<div id="headerName-container">
+					<a class="name sort columntitle" data-sort="name"><span><?php p($l->t('Name')); ?></span><span class="sort-indicator"></span></a>
+				</div>
+			</th>
+			<th id="headerDate" class="hidden column-mtime">
+				<a id="modified" class="columntitle" data-sort="mtime"><span><?php p($l->t('Share time')); ?></span><span class="sort-indicator"></span></a>
+			</th>
+			<th class="hidden column-expiration">
+				<a class="columntitle"><span><?php p($l->t('Expiration date')); ?></span></a>
+			</th>
+		</tr>
+	</thead>
+	<tbody id="fileList">
+	</tbody>
+	<tfoot>
+	</tfoot>
+</table>

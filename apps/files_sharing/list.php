@@ -1,39 +1,54 @@
 <?php
 /**
- * ownCloud
+ * @copyright Copyright (c) 2016, ownCloud, Inc.
  *
- * @author Michael Gapczynski
- * @copyright 2011 Michael Gapczynski GapczynskiM@gmail.com
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author John Molakvoæ <skjnldsv@protonmail.com>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Vincent Petry <vincent@nextcloud.com>
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or any later version.
+ * @license AGPL-3.0
  *
- * This library is distributed in the hope that it will be useful,
+ * This code is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License, version 3,
+ * as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU AFFERO GENERAL PUBLIC LICENSE for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
  *
- * You should have received a copy of the GNU Affero General Public
- * License along with this library.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU Affero General Public License, version 3,
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
  *
  */
+use OCA\Files\Event\LoadAdditionalScriptsEvent;
+use OCA\Files\Event\LoadSidebar;
+use OCA\Viewer\Event\LoadViewer;
+use OCP\EventDispatcher\GenericEvent;
 
-require_once('../../lib/base.php');
-require_once('lib_share.php');
+$config = \OC::$server->getConfig();
+$userSession = \OC::$server->getUserSession();
+$legacyEventDispatcher = \OC::$server->getEventDispatcher();
+/** @var \OCP\EventDispatcher\IEventDispatcher $eventDispatcher */
+$eventDispatcher = \OC::$server->get(OCP\EventDispatcher\IEventDispatcher::class);
 
-if (!OC_User::isLoggedIn()){
-	header( "Location: ".OC_HELPER::linkTo( "index.php" ));
-	exit();
+$showgridview = $config->getUserValue($userSession->getUser()->getUID(), 'files', 'show_grid', false);
+
+$tmpl = new OCP\Template('files_sharing', 'list', '');
+
+// gridview not available for ie
+$tmpl->assign('showgridview', $showgridview);
+
+// fire script events
+$legacyEventDispatcher->dispatch('\OCP\Collaboration\Resources::loadAdditionalScripts', new GenericEvent());
+$eventDispatcher->dispatchTyped(new LoadAdditionalScriptsEvent());
+$eventDispatcher->dispatchTyped(new LoadSidebar());
+
+// Load Viewer scripts
+if (class_exists(LoadViewer::class)) {
+	$eventDispatcher->dispatchTyped(new LoadViewer());
 }
 
-OC_App::setActiveNavigationEntry("files_sharing_list");
-
-OC_Util::addScript("files_sharing", "list");
-
-$tmpl = new OC_Template("files_sharing", "list", "user");
-$tmpl->assign("shared_items", OC_Share::getMySharedItems());
 $tmpl->printPage();
-
-?>

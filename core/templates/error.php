@@ -1,8 +1,13 @@
-<ul>
-	<?php foreach($_["errors"] as $error):?>
-		<li class='error'>
-			<?php echo $error['error'] ?><br/>
-			<p class='hint'><?php if(isset($error['hint']))echo $error['hint'] ?></p>
+<div class="error">
+	<h2><?php p($l->t('Error')) ?></h2>
+	<ul>
+	<?php foreach ($_["errors"] as $error):?>
+		<li>
+			<p><?php p($error['error']) ?></p>
+			<?php if (isset($error['hint']) && $error['hint']): ?>
+				<p class='hint'><?php p($error['hint']) ?></p>
+			<?php endif;?>
 		</li>
 	<?php endforeach ?>
-</ul>
+	</ul>
+</div>

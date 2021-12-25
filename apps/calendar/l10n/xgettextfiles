@@ -1,8 +1,0 @@
-../appinfo/app.php
-../templates/calendar.php
-../templates/part.editevent.php
-../templates/part.eventinfo.php
-../templates/part.newevent.php
-../templates/part.choosecalendar.php
-../js/calendar.js
-../js/calendar_init.js

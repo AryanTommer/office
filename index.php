@@ -1,126 +1,89 @@
 <?php
-
 /**
-* ownCloud
-*
-* @author Frank Karlitschek
-* @copyright 2010 Frank Karlitschek karlitschek@kde.org
-*
-* This library is free software; you can redistribute it and/or
-* modify it under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE
-* License as published by the Free Software Foundation; either
-* version 3 of the License, or any later version.
-*
-* This library is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU AFFERO GENERAL PUBLIC LICENSE for more details.
-*
-* You should have received a copy of the GNU Affero General Public
-* License along with this library.  If not, see <http://www.gnu.org/licenses/>.
-*
-*/
+ * @copyright Copyright (c) 2016, ownCloud, Inc.
+ *
+ * @author Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @author Joas Schilling <coding@schilljs.com>
+ * @author Jörn Friedrich Dreyer <jfd@butonic.de>
+ * @author Lukas Reschke <lukas@statuscode.ch>
+ * @author Morris Jobke <hey@morrisjobke.de>
+ * @author Robin Appelman <robin@icewind.nl>
+ * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Sergio Bertolín <sbertolin@solidgear.es>
+ * @author Thomas Müller <thomas.mueller@tmit.eu>
+ * @author Vincent Petry <vincent@nextcloud.com>
+ *
+ * @license AGPL-3.0
+ *
+ * This code is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License, version 3,
+ * as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License, version 3,
+ * along with this program. If not, see <http://www.gnu.org/licenses/>
+ *
+ */
+require_once __DIR__ . '/lib/versioncheck.php';
 
-$RUNTIME_NOAPPS = TRUE; //no apps, yet
+try {
+	require_once __DIR__ . '/lib/base.php';
 
-require_once('lib/base.php');
+	OC::handleRequest();
+} catch (\OC\ServiceUnavailableException $ex) {
+	\OC::$server->getLogger()->logException($ex, ['app' => 'index']);
 
-OC_Util::addScript('setup');
+	//show the user a detailed error page
+	OC_Template::printExceptionErrorPage($ex, 503);
+} catch (\OCP\HintException $ex) {
+	try {
+		OC_Template::printErrorPage($ex->getMessage(), $ex->getHint(), 503);
+	} catch (Exception $ex2) {
+		try {
+			\OC::$server->getLogger()->logException($ex, ['app' => 'index']);
+			\OC::$server->getLogger()->logException($ex2, ['app' => 'index']);
+		} catch (Throwable $e) {
+			// no way to log it properly - but to avoid a white page of death we try harder and ignore this one here
+		}
 
-$not_installed = !OC_Config::getValue('installed', false);
-$install_called = (isset($_POST['install']) AND $_POST['install']=='true');
-// First step : check if the server is correctly configured for ownCloud :
-$errors = OC_Util::checkServer();
-if(count($errors) > 0) {
-	OC_Template::printGuestPage("", "error", array("errors" => $errors));
-}
-
-// Setup required :
-elseif($not_installed OR $install_called) {
-	require_once('setup.php');
-	exit();
-}
-
-if($_SERVER['REQUEST_METHOD']=='PROPFIND'){//handle webdav
-	header('location: '.OC_Helper::linkTo('files','webdav.php'));
-	exit();
-}
-
-// Someone is logged in :
-elseif(OC_User::isLoggedIn()) {
-	if(isset($_GET["logout"]) and ($_GET["logout"])) {
-		OC_User::logout();
-		header("Location: ".$WEBROOT.'/');
+		//show the user a detailed error page
+		OC_Template::printExceptionErrorPage($ex, 500);
+	}
+} catch (\OC\User\LoginException $ex) {
+	$request = \OC::$server->getRequest();
+	/**
+	 * Routes with the @CORS annotation and other API endpoints should
+	 * not return a webpage, so we only print the error page when html is accepted,
+	 * otherwise we reply with a JSON array like the SecurityMiddleware would do.
+	 */
+	if (stripos($request->getHeader('Accept'),'html') === false) {
+		http_response_code(401);
+		header('Content-Type: application/json; charset=utf-8');
+		echo json_encode(['message' => $ex->getMessage()]);
 		exit();
 	}
-	else {
-		header("Location: ".$WEBROOT.'/'.OC_Appconfig::getValue("core", "defaultpage", "files/index.php"));
-		exit();
-	}
-}
+	OC_Template::printErrorPage($ex->getMessage(), $ex->getMessage(), 401);
+} catch (Exception $ex) {
+	\OC::$server->getLogger()->logException($ex, ['app' => 'index']);
 
-// Someone wants to log in :
-elseif(isset($_POST["user"]) && isset($_POST['password'])) {
-	OC_App::loadApps();
-	if(OC_User::login($_POST["user"], $_POST["password"])) {
-		header("Location: ".$WEBROOT.'/'.OC_Appconfig::getValue("core", "defaultpage", "files/index.php"));
-		if(!empty($_POST["remember_login"])){
-			OC_User::setUsernameInCookie($_POST["user"]);
-		}
-		else {
-			OC_User::unsetUsernameInCookie();
-		}
-		exit();
-	}
-	else {
-		if(isset($_COOKIE["username"])){
-			OC_Template::printGuestPage("", "login", array("error" => true, "username" => $_COOKIE["username"]));
-		}else{
-			OC_Template::printGuestPage("", "login", array("error" => true));
-		}
-	}
-}
+	//show the user a detailed error page
+	OC_Template::printExceptionErrorPage($ex, 500);
+} catch (Error $ex) {
+	try {
+		\OC::$server->getLogger()->logException($ex, ['app' => 'index']);
+	} catch (Error $e) {
+		http_response_code(500);
+		header('Content-Type: text/plain; charset=utf-8');
+		print("Internal Server Error\n\n");
+		print("The server encountered an internal error and was unable to complete your request.\n");
+		print("Please contact the server administrator if this error reappears multiple times, please include the technical details below in your report.\n");
+		print("More details can be found in the webserver log.\n");
 
-// Someone lost their password:
-elseif(isset($_GET['lostpassword'])) {
-	OC_App::loadApps();
-	if (isset($_POST['user'])) {
-		if (OC_User::userExists($_POST['user'])) {
-			$token = sha1($_POST['user']+uniqId());
-			OC_Preferences::setValue($_POST['user'], "owncloud", "lostpassword", $token);
-			// TODO send email with link+token
-			OC_Template::printGuestPage("", "lostpassword", array("error" => false, "requested" => true));
-		} else {
-			OC_Template::printGuestPage("", "lostpassword", array("error" => true, "requested" => false));
-		}
-	} else {
-		OC_Template::printGuestPage("", "lostpassword", array("error" => false, "requested" => false));
+		throw $ex;
 	}
+	OC_Template::printExceptionErrorPage($ex, 500);
 }
-
-// Someone wants to reset their password:
-elseif(isset($_GET['resetpassword']) && isset($_GET['token']) && isset($_GET['user']) && OC_Preferences::getValue($_GET['user'], "owncloud", "lostpassword") === $_GET['token']) {
-	OC_App::loadApps();
-	if (isset($_POST['password'])) {
-		if (OC_User::setPassword($_GET['user'], $_POST['password'])) {
-			OC_Preferences::deleteKey($_GET['user'], "owncloud", "lostpassword");
-			OC_Template::printGuestPage("", "resetpassword", array("success" => true));
-		} else {
-			OC_Template::printGuestPage("", "resetpassword", array("success" => false));
-		}
-	} else {
-		OC_Template::printGuestPage("", "resetpassword", array("success" => false));
-	}
-}
-
-// For all others cases, we display the guest page :
-else {
-	OC_App::loadApps();
-	if(isset($_COOKIE["username"])){
-		OC_Template::printGuestPage("", "login", array("error" => false, "username" => $_COOKIE["username"]));
-	}else{
-		OC_Template::printGuestPage("", "login", array("error" => false));
-	}
-}
-
-?>
